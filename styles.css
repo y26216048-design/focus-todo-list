@@ -1,0 +1,40 @@
+:root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#182236;background:#f4f6fa;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -20%,#e3edff 0%,transparent 60%),#f5f7fb}
+button,input{font:inherit}button{cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid #9cc2ff;outline-offset:3px}
+.shell{width:min(700px,calc(100% - 36px));margin:0 auto;padding:72px 0 60px}
+.eyebrow{font-size:13px;text-transform:uppercase;letter-spacing:.2em;font-weight:800;color:#5175ba;display:flex;align-items:center;gap:9px}
+.mark{width:26px;height:26px;display:grid;place-items:center;border-radius:9px;color:white;background:#3868e7;font-size:17px;letter-spacing:0;box-shadow:0 5px 14px #3768e63f}
+h1{margin:20px 0 8px;font-size:clamp(36px,6vw,52px);line-height:1.1;letter-spacing:-.055em;font-weight:780}
+.intro{font-size:16px;color:#7c8799;margin:0 0 33px}
+.panel{background:#fff;border:1px solid #e5eaf3;box-shadow:0 20px 60px #253b6112,0 3px 10px #253b6108;border-radius:24px;overflow:hidden}
+.form{display:flex;gap:12px;padding:22px;border-bottom:1px solid #eef1f6}
+.form input{background:#f6f8fc;border:1px solid #e9edf5;border-radius:13px;flex:1;min-width:0;padding:16px;font-size:15px;color:#1b2840}
+.form input::placeholder{color:#9da8b8}
+.add{background:#346bea;border:none;border-radius:13px;color:#fff;font-weight:700;padding:0 22px;box-shadow:0 5px 12px #346bea32;white-space:nowrap}.add:hover{background:#2359d6}
+.toolbar{padding:22px 22px 15px;display:flex;justify-content:space-between;align-items:center;gap:15px}
+.toolbar strong{font-size:15px}
+.count{font-size:13px;font-weight:700;color:#6480a9;background:#edf4ff;border-radius:30px;padding:7px 12px}
+.progress{height:6px;background:#edf1f7;margin:0 22px 17px;border-radius:20px;overflow:hidden}
+.progress>div{height:100%;background:linear-gradient(90deg,#5485f7,#3fc5aa);border-radius:20px;width:0%;transition:width .25s}
+.filters{display:flex;gap:6px;padding:0 22px 14px;flex-wrap:wrap}
+.filter{background:transparent;color:#8690a1;border:0;border-radius:9px;padding:9px 13px;font-size:13px;font-weight:650}
+.filter[aria-pressed=true]{background:#ecf2ff;color:#315dd0}
+.tasks{list-style:none;padding:0 22px;margin:0}
+.task{display:flex;align-items:center;gap:13px;border-top:1px solid #eef1f6;padding:15px 0;min-height:68px;animation:rise .2s ease}
+.check{width:24px;height:24px;flex:none;border:2px solid #cad3e1;border-radius:8px;background:#fff;color:white;display:grid;place-items:center;transition:.15s}.check:hover{border-color:#4276e7}
+.task.done .check{background:#3e74ec;border-color:#3e74ec}
+.task span.label{flex:1;min-width:0;overflow-wrap:anywhere;font-size:15px;font-weight:550}
+.task.done span.label{color:#a2adbc;text-decoration:line-through}
+.remove{border:0;background:transparent;color:#a5afbf;border-radius:10px;display:grid;place-items:center;width:36px;height:36px;font-size:22px}
+.remove:hover{background:#fff0f0;color:#d94d5c}
+.empty{text-align:center;padding:48px 20px 54px;color:#919bad}
+.empty .symbol{width:64px;height:64px;display:grid;place-items:center;margin:0 auto 15px;border-radius:20px;background:#f0f5ff;color:#5480da;font-size:27px}
+.empty strong{display:block;color:#374660;margin-bottom:7px;font-size:16px}.empty p{margin:0;font-size:14px}
+.bottom{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fbfcff;padding:17px 22px;border-top:1px solid #eef1f6;font-size:13px;color:#8b97a9}
+.clear{border:0;background:transparent;color:#557ad0;font-weight:650;padding:6px 0}.clear:disabled{opacity:.35;cursor:default}
+.note{text-align:center;margin:22px 0 0;color:#a1aabb;font-size:12px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+@keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:520px){.shell{padding-top:42px}.form{padding:15px;gap:8px}.form input{padding:13px 11px}.add{padding:0 14px}.toolbar{padding:19px 16px 14px}.filters{padding:0 16px 13px}.tasks{padding:0 16px}.progress{margin:0 16px 13px}.bottom{padding:15px 16px}}
