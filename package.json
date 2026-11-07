@@ -1,0 +1,16 @@
+{
+  "name": "velio",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "node scripts/build.cjs",
+    "test": "python3 tests/browser.py"
+  },
+  "devDependencies": {
+    "vite": "^7.2.2"
+  },
+  "dependencies": {
+    "feather-icons": "^4.29.2"
+  }
+}

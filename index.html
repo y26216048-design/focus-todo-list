@@ -1,28 +1,42 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#f5f6f8" />
-  <meta name="description" content="Удобный список задач с сохранением в браузере." />
-  <title>Focus — мои задачи</title>
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fc"><meta name="description" content="VELIO — ваши задачи в ясном порядке. Планируйте день, отмечайте главное и следите за прогрессом.">
+<title>VELIO — ваши задачи</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('velio-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch{}</script>
+<link rel="stylesheet" href="./styles.css"><link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<script src="./vendor/feather.min.js" defer></script><script src="./app.js" defer></script>
 </head>
 <body>
-  <main class="shell">
-    <div class="eyebrow"><span class="mark" aria-hidden="true">✓</span> FOCUS / TASK MANAGER</div>
-    <h1>Мои задачи<span style="color:#3a70ec">.</span></h1>
-    <p class="intro">Меньше хаоса, больше сделанного.</p>
-    <section class="panel" aria-label="Список задач">
-      <form class="form" id="task-form"><label class="sr-only" for="task-input">Новая задача</label><input id="task-input" type="text" placeholder="Что нужно сделать?" maxlength="160" autocomplete="off" required /><button class="add" type="submit">+ Добавить</button></form>
-      <div class="toolbar"><strong>Список задач</strong><span class="count" id="count">0 выполнено</span></div>
-      <div class="progress" role="progressbar" aria-label="Прогресс выполнения" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div id="progress-fill"></div></div>
-      <div class="filters" role="group" aria-label="Фильтр задач"><button class="filter" type="button" data-filter="all" aria-pressed="true">Все</button><button class="filter" type="button" data-filter="active" aria-pressed="false">Активные</button><button class="filter" type="button" data-filter="done" aria-pressed="false">Выполненные</button></div>
-      <ul class="tasks" id="tasks" aria-live="polite"></ul>
-      <div class="bottom"><span id="remaining">Нет активных задач</span><button type="button" class="clear" id="clear" disabled>Очистить выполненные</button></div>
-    </section>
-    <p class="note">Ваши задачи автоматически сохраняются в этом браузере.</p>
-  </main>
-  <script src="app.js" defer></script>
-</body>
-</html>
+<div class="app-shell">
+<aside class="sidebar">
+<a class="brand" href="#today" aria-label="VELIO — Сегодня"><span class="brand-mark"><i data-feather="check"></i></span><span>VELIO</span></a>
+<nav class="desktop-nav" aria-label="Основные разделы">
+<button data-view="today"><i data-feather="calendar"></i><span>Сегодня</span><b data-count="today">0</b></button>
+<button data-view="upcoming"><i data-feather="calendar"></i><span>Предстоящие</span><b data-count="upcoming">0</b></button>
+<button data-view="completed"><i data-feather="check-circle"></i><span>Завершено</span><b data-count="completed">0</b></button>
+</nav>
+<section class="sidebar-progress"><h2>Прогресс</h2><div class="progress-content"><div class="ring"><strong data-progress>0%</strong></div><div><p>Прогресс сегодня</p><span data-progress-label>0 из 0 задач</span></div></div></section>
+<p class="sidebar-note"><i data-feather="lock"></i>Ваш день. Ваш ритм.</p>
+</aside>
+<div class="workspace">
+<header class="mobile-header"><a class="brand" href="#today"><span class="brand-mark"><i data-feather="check"></i></span><span>VELIO</span></a></header>
+<div class="top-tools"><span class="date-chip"><i data-feather="calendar"></i><span id="current-date"></span></span><button class="icon-button theme-toggle" aria-label="Включить тёмную тему" title="Переключить тему"></button></div>
+<main id="main">
+<div class="page-heading"><span class="heading-icon"><i data-feather="sun"></i></span><div><h1 id="page-title">Сегодня</h1><p id="page-subtitle">Ваши задачи на сегодня</p></div><div class="ring mobile-ring"><strong data-progress>0%</strong></div></div>
+<form id="task-form" class="composer">
+<div class="composer-main"><i data-feather="plus"></i><input id="task-input" aria-label="Название задачи" placeholder="Добавить задачу..." maxlength="300" required autocomplete="off"><button class="add-button" type="submit">Добавить</button></div>
+<div class="composer-details"><label><i data-feather="calendar"></i><input type="date" id="task-date" aria-label="Дата задачи" required></label><label><i data-feather="clock"></i><input type="time" id="task-time" aria-label="Время задачи"></label><span>Не спешите. Начните с главного.</span></div>
+</form>
+<div id="completed-banner" class="completed-banner" hidden><i data-feather="award"></i><div><strong id="completed-summary"></strong><p>Отличный результат!</p></div></div>
+<div id="task-groups" aria-label="Задачи"></div>
+<div id="empty-state" class="empty-state" hidden><span><i data-feather="check-circle"></i></span><h2 id="empty-title"></h2><p id="empty-description"></p></div>
+<section class="stats" aria-label="Прогресс сегодня"><div class="stat"><span class="stat-icon blue"><i data-feather="check"></i></span><div><strong id="stat-done">0</strong><p>Выполнено</p></div></div><div class="stat"><span class="stat-icon slate"><i data-feather="circle"></i></span><div><strong id="stat-left">0</strong><p>Осталось</p></div></div><div class="stat"><span class="stat-icon green"><i data-feather="target"></i></span><div><strong data-progress>0%</strong><p>Прогресс</p></div></div></section>
+</main>
+</div>
+<nav class="bottom-nav" aria-label="Основные разделы на телефоне"><button data-view="today"><i data-feather="home"></i><span>Сегодня</span></button><button data-view="upcoming"><i data-feather="calendar"></i><span>Предстоящие</span></button><button data-view="completed"><i data-feather="check-circle"></i><span>Завершено</span></button></nav>
+</div>
+<div id="toast" role="status" hidden><span></span><button type="button">Отменить</button></div>
+<p id="storage-error" role="alert" hidden>Браузер не позволяет сохранить данные. Разрешите локальное хранилище, чтобы не потерять задачи после закрытия страницы.</p>
+</body></html>
