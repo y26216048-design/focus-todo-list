@@ -181,6 +181,45 @@
     li.append(del);
     return li;
   }
+  // One shared animation keeps both rings and the summary percentage in sync.
+  let progressFrame = 0;
+  let progressValue = 0;
+  let progressTarget = null;
+  function paintProgress(value) {
+    progressValue = value;
+    document.querySelectorAll("[data-progress]").forEach((el) => {
+      el.textContent = `${Math.round(value)}%`;
+    });
+    document.querySelectorAll(".ring").forEach((el) => {
+      el.style.setProperty("--value", `${value}%`);
+    });
+  }
+  function animateProgress(target, replay = false) {
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (target === progressTarget && !replay && !reduced) return;
+    cancelAnimationFrame(progressFrame);
+    const initial = progressTarget === null;
+    progressTarget = target;
+    if (reduced) {
+      paintProgress(target);
+      return;
+    }
+    const from = replay || initial ? 0 : progressValue;
+    const start = performance.now();
+    const duration = initial || replay ? 900 : 450;
+    paintProgress(from);
+    function frame(now) {
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        paintProgress(target);
+        return;
+      }
+      const elapsed = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - elapsed, 3);
+      paintProgress(from + (target - from) * eased);
+      if (elapsed < 1) progressFrame = requestAnimationFrame(frame);
+    }
+    progressFrame = requestAnimationFrame(frame);
+  }
   function render() {
     today = day();
     const daily = tasks.filter((t) => t.date === today),
@@ -190,12 +229,7 @@
       : 0;
     const upcoming = tasks.filter((t) => !t.done && t.date > today),
       completed = tasks.filter((t) => t.done);
-    document
-      .querySelectorAll("[data-progress]")
-      .forEach((el) => (el.textContent = `${percentage}%`));
-    document
-      .querySelectorAll(".ring")
-      .forEach((el) => el.style.setProperty("--value", `${percentage}%`));
+    animateProgress(percentage);
     $("[data-progress-label]").textContent =
       `${done} из ${daily.length} ${countLabel(daily.length)}`;
     $("#stat-done").textContent = done;
@@ -280,7 +314,11 @@
       }
       const list = document.createElement("ul");
       list.className = "task-list";
-      items.forEach((t) => list.append(row(t)));
+      items.forEach((t, index) => {
+        const item = row(t);
+        item.style.setProperty("--row-index", index);
+        list.append(item);
+      });
       groups.append(list);
     }
     $("#empty-state").hidden = selected.length > 0;
@@ -307,6 +345,7 @@
     $("#task-date").value = view === "upcoming" ? shiftedDay(1) : day();
     render();
     if (changed) {
+      if (next === "today") animateProgress(progressTarget, true);
       if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
         $("#main")
           .getAnimations()

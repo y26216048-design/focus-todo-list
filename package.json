@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "node scripts/build.cjs",
+    "build": "npm run assets:version && node scripts/build.cjs",
     "test": "python3 tests/browser.py && python3 tests/layout.py",
-    "format": "prettier --write app.js styles.css index.html scripts/build.cjs vite.config.js package.json vercel.json",
-    "format:check": "prettier --check app.js styles.css index.html scripts/build.cjs vite.config.js package.json vercel.json"
+    "format": "prettier --write app.js styles.css index.html scripts/*.cjs vite.config.js package.json vercel.json",
+    "format:check": "prettier --check app.js styles.css index.html scripts/*.cjs vite.config.js package.json vercel.json",
+    "assets:version": "node scripts/version-assets.cjs"
   },
   "devDependencies": {
     "prettier": "^3.6.2",

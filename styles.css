@@ -144,8 +144,14 @@ a {
 }
 .desktop-nav button b {
   margin-left: auto;
-  min-width: 31px;
-  padding: 5px 8px;
+  display: grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
   border-radius: 20px;
   background: var(--input);
   font-size: 14px;
@@ -1109,4 +1115,148 @@ button.stat {
 button.stat:hover {
   border-color: var(--blue);
   background: var(--active);
+}
+
+/* Fill the desktop viewport, including the work area below short task lists. */
+@media (min-width: 761px) {
+  html,
+  body {
+    width: 100%;
+    min-height: 100%;
+  }
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding-bottom: 24px;
+  }
+  #main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+  .stats {
+    margin-top: auto;
+    padding-top: 30px;
+  }
+  #task-groups {
+    margin-bottom: 0;
+  }
+  .task-row {
+    min-height: clamp(65px, 7.8vh, 92px);
+  }
+}
+/* Motion uses transforms and opacity so it does not shift surrounding content. */
+.sidebar > .brand {
+  animation: appear 0.45s ease both;
+}
+.desktop-nav button {
+  animation: appear 0.4s ease both;
+}
+.desktop-nav button:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.desktop-nav button:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.sidebar-progress {
+  animation: appear 0.5s 0.12s ease both;
+}
+.page-heading {
+  animation: appear 0.45s ease both;
+}
+.composer {
+  animation: appear 0.45s 0.05s ease both;
+}
+.stat {
+  animation: appear 0.45s ease both;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    transform 0.2s;
+}
+.stat:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.stat:nth-child(3) {
+  animation-delay: 0.12s;
+}
+button.stat:hover {
+  transform: translateY(-2px);
+}
+button.stat:active {
+  transform: scale(0.985);
+}
+.completed-banner,
+.empty-state {
+  animation: appear 0.35s ease both;
+}
+.task-row {
+  animation-delay: calc(min(var(--row-index, 0), 6) * 25ms);
+}
+.task-check {
+  transition:
+    background-color 0.18s,
+    border-color 0.18s,
+    box-shadow 0.18s;
+}
+.task-check:hover {
+  box-shadow: 0 0 0 4px var(--active);
+}
+.ring strong {
+  font-variant-numeric: tabular-nums;
+}
+#toast:not([hidden]) {
+  animation: toast-in 0.2s ease both;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+.theme-toggle svg {
+  animation: theme-icon-in 0.25s ease both;
+}
+.desktop-nav button.active > svg,
+.bottom-nav button.active > svg {
+  animation: nav-icon-in 0.3s ease both;
+}
+@keyframes theme-icon-in {
+  from {
+    opacity: 0;
+    transform: rotate(-25deg) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+@keyframes nav-icon-in {
+  from {
+    transform: scale(0.85);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+/* Keep header tools clickable above animated heading stacking contexts. */
+.top-tools {
+  z-index: 2;
+}
+@media (min-width: 761px) {
+  .today-view #task-groups:has(.task-row:nth-child(4)) {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .today-view #task-groups:has(.task-row:nth-child(4)) > .task-list:last-child {
+    flex: 1;
+    grid-auto-rows: minmax(65px, 1fr);
+  }
 }
