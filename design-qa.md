@@ -59,3 +59,5 @@ GitHub Pages is now enabled on the existing repository (`main`, root). The earli
 - Entry/hover/press animations cover headings, navigation, rows, cards, theme icons and notifications. Header tools have an explicit stacking level so animated headings cannot block calendar/theme clicks.
 - Local CRUD, calendar and responsive checks passed at four original viewports. Full-window, counter centering, progress animation and reduced-motion checks passed at 1920, 1440, 1280, 1024 and 980px widths. Updated visual evidence: `docs/desktop.png`, `test-results/fullscreen-*.png` and `test-results/progress-entry-final.png`.
 - final result: passed
+
+Public verification of this follow-up passed at `https://y26216048-design.github.io/focus-todo-list/?v=c29769b`: CRUD/calendar/mobile checks at four viewports and full-window, badge-centering, progress and reduced-motion checks at five desktop sizes. GitHub Actions passed for the application commit `c29769b`. Animation-start assertions now capture the click and running animation in the same browser evaluation, avoiding a timing race after a short transition has already finished.

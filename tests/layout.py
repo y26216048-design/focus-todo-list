@@ -12,8 +12,8 @@ with sync_playwright() as p:
   for badge in page.locator('.desktop-nav [data-count]').all():
    position=badge.evaluate("""el=>{const box=el.getBoundingClientRect();const range=document.createRange();range.selectNodeContents(el);const text=range.getBoundingClientRect();return {dx:Math.abs(text.x+text.width/2-box.x-box.width/2),dy:Math.abs(text.y+text.height/2-box.y-box.height/2)}}""")
    assert position['dx']<=2 and position['dy']<=2,position
-  page.locator('.desktop-nav [data-view=upcoming]').click()
-  assert page.locator('#main').evaluate('el => el.getAnimations().length')>0
+  active=page.evaluate("""()=>{document.querySelector('.desktop-nav [data-view=upcoming]').click();return document.querySelector('#main').getAnimations().length}""")
+  assert active>0
   page.wait_for_timeout(260)
   page.locator('.stats [data-view=completed]').click()
   expect(page.locator('#page-title')).to_have_text('Завершено')
