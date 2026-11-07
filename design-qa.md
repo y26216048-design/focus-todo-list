@@ -34,6 +34,18 @@ The managed preview relay was unavailable and terminal.local returned 403. Used 
 
 P3: OS-specific font and native date-input rendering differences. No blocking actions remain.
 
-## Publication check
+## Current iteration: desktop expansion and interactive calendar
 
-All four local Chromium viewport runs passed on final source. Source committed and pushed to existing `main`. Public-site verification is blocked: GitHub Pages enablement API returned 403 (`Resource not accessible by integration`); Vercel project creation returned 403 (`forbidden`). No separate Vercel CLI credentials are configured. No public deployment or working permanent URL is claimed. Repository owner must enable Pages under Settings → Pages, main, root; then run the same browser suite with `BASE_URL` pointing at the published HTTPS address.
+The user's later brief explicitly replaces the centered desktop shell with a full-window layout, while preserving mobile styling and the sidebar tagline. That requirement supersedes the original desktop frame measurements above.
+
+- New evidence: `docs/desktop.png` (1440×900, dark) and `docs/mobile.png` (390×844, light). Full-window captures at 1920×1080, 1440×900, 1280×720, 1024×768 and 980×720 are in `test-results/fullscreen-*.png`. Calendar captures are in `test-results/calendar-*.png`.
+- Typography, row spacing, color tokens, Feather icons and mobile navigation retained. Desktop outer margins, fixed maximum width, outer border and shell rounding removed as requested. Sidebar remains available while the task list scrolls.
+- Calendar was previously a static date label; it is now an accessible button opening a native dialog. Date selection displays actual tasks. Completion, deletion, undo, adding on the selected date, today reset, close button and Escape were verified.
+- Summary cards for completed and remaining tasks now navigate to the relevant sections. Section transitions use a 220ms entrance animation; reduced-motion preference disables it. Theme and button feedback transitions verified.
+- Local CRUD suite passed at all four original sizes; layout/animation checks passed at five additional desktop sizes. No browser page errors or horizontal overflow.
+- Follow-up P3: native date input rendering depends on OS. Physical phones were not tested.
+- Final result for this iteration: passed.
+
+## Publication
+
+GitHub Pages is now enabled on the existing repository (`main`, root). The earlier enablement permission blocker is resolved by repository configuration. Each push can deploy through Pages; the public build is verified after pushing this iteration.
