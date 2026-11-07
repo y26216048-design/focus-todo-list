@@ -98,7 +98,7 @@
   document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>setView(button.dataset.view)));
   window.addEventListener('hashchange',()=>{const next=location.hash.slice(1);if(next!==view)setView(next);});
   $('.theme-toggle').addEventListener('click',()=>{const theme=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=theme;try{localStorage.setItem('velio-theme',theme);}catch{}renderTheme();});
-  function renderTheme(){const dark=document.documentElement.dataset.theme==='dark';$('.theme-toggle').innerHTML=icon(dark?'sun':'moon');$('.theme-toggle').setAttribute('aria-label',`Включить ${dark?'светлую':'тёмную'} тему`);$('meta[name="theme-color"]').content=dark?'#050e18':'#f5f7fc';}
+  function renderTheme(){const dark=document.documentElement.dataset.theme==='dark';$('.theme-toggle').innerHTML=icon(dark?'moon':'sun');$('.theme-toggle').title=dark?'Тёмная тема — переключить на светлую':'Светлая тема — переключить на тёмную';$('.theme-toggle').setAttribute('aria-label',`Включить ${dark?'светлую':'тёмную'} тему`);$('meta[name="theme-color"]').content=dark?'#050e18':'#f5f7fc';}
   $('#toast button').addEventListener('click',()=>{if(removed){tasks.splice(removed.index,0,removed.task);removed=null;save();render();}$('#toast').hidden=true;});
   window.addEventListener('storage',event=>{if(event.key===KEY){load();render();}});
   window.addEventListener('focus',()=>{if(day()!==today)render();});
