@@ -33,3 +33,7 @@ The managed preview relay was unavailable and terminal.local returned 403. Used 
 ## Follow-up polish
 
 P3: OS-specific font and native date-input rendering differences. No blocking actions remain.
+
+## Publication check
+
+All four local Chromium viewport runs passed on final source. Source committed and pushed to existing `main`. Public-site verification is blocked: GitHub Pages enablement API returned 403 (`Resource not accessible by integration`); Vercel project creation returned 403 (`forbidden`). No separate Vercel CLI credentials are configured. No public deployment or working permanent URL is claimed. Repository owner must enable Pages under Settings → Pages, main, root; then run the same browser suite with `BASE_URL` pointing at the published HTTPS address.

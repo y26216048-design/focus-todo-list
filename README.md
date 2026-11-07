@@ -41,3 +41,9 @@ BASE_URL=http://127.0.0.1:4173/ npm test
 Vercel: импортировать существующий `y26216048-design/focus-todo-list`, framework «Other», build `npm run build`, output `dist`, production branch `main`. Все последующие push в main автоматически обновляют сайт.
 
 Альтернатива GitHub Pages: Settings → Pages → Deploy from a branch → main → / (root). Сайт работает из подпапки без настройки абсолютных путей.
+
+### Статус публикации
+
+Код отправлен в существующую ветку `main`. Автоматическое включение Pages через подключение GitHub вернуло `403 Resource not accessible by integration`; создание проекта через подключение Vercel также вернуло `403 forbidden`. Публикация пока не выполнена.
+
+Владелец может включить Pages без изменения кода: https://github.com/y26216048-design/focus-todo-list/settings/pages → Deploy from a branch → main → / (root) → Save. Ожидаемый постоянный адрес после успешной публикации: https://y26216048-design.github.io/focus-todo-list/ . До включения Pages этот адрес не является работающим сайтом.
