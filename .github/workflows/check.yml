@@ -7,15 +7,15 @@ permissions:
   contents: read
 jobs:
   browser-checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - run: npm ci
@@ -27,7 +27,7 @@ jobs:
         run: |
           python -m http.server 4173 --bind 127.0.0.1 --directory dist &
           npm test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: browser-screenshots
