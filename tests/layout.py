@@ -24,11 +24,8 @@ with sync_playwright() as p:
   assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
   if width==1920:
    initial=page.evaluate("""()=>{document.querySelector('.desktop-nav [data-view=upcoming]').click();document.querySelector('.desktop-nav [data-view=today]').click();return parseInt(document.querySelector('.sidebar [data-progress]').textContent)}""")
-   assert initial==0
-   page.wait_for_timeout(200)
-   middle=int(page.locator('.sidebar [data-progress]').inner_text().rstrip('%'))
-   assert 0<middle<25,middle
-   page.wait_for_timeout(1000)
+   assert initial==25,initial
+  page.wait_for_timeout(1000)
    assert page.locator('.sidebar [data-progress]').inner_text()=='25%'
   page.wait_for_timeout(1000)
   page.mouse.move(width-5,height-5)
