@@ -27,9 +27,9 @@ with sync_playwright() as p:
    assert initial==0
    page.wait_for_timeout(200)
    middle=int(page.locator('.sidebar [data-progress]').inner_text().rstrip('%'))
-   assert 0<middle<40,middle
+   assert 0<middle<25,middle
    page.wait_for_timeout(1000)
-   assert page.locator('.sidebar [data-progress]').inner_text()=='40%'
+   assert page.locator('.sidebar [data-progress]').inner_text()=='25%'
   page.wait_for_timeout(1000)
   page.mouse.move(width-5,height-5)
   page.screenshot(path=f'test-results/fullscreen-{width}.png',full_page=True)
