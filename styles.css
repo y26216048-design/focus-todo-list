@@ -9,11 +9,11 @@
   --input: #eef2fa;
   --line: #e2e7f0;
   --text: #182338;
-  --muted: #738097;
-  --blue: #087bff;
+  --muted: #5b6a82;
+  --blue: #0063d1;
   --active: #e5efff;
   --shadow: 0 8px 32px #30456b06;
-  --green: #25bf69;
+  --green: #13763f;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
@@ -26,6 +26,8 @@
   --line: #223145;
   --text: #f3f5fa;
   --muted: #a1aec4;
+  --blue: #68acff;
+  --green: #25bf69;
   --active: #103b75;
   --shadow: 0 8px 32px #00000018;
 }
@@ -321,7 +323,7 @@ a {
   color: var(--muted);
 }
 .add-button {
-  background: var(--blue);
+  background: #0063d1;
   color: white;
   border-radius: 24px;
   padding: 12px 22px;
@@ -403,8 +405,8 @@ a {
   background: transparent;
 }
 .task-check:checked {
-  background: var(--blue);
-  border-color: var(--blue);
+  background: #0063d1;
+  border-color: #0063d1;
 }
 .task-check:checked:after {
   content: "";
@@ -603,7 +605,7 @@ a {
 }
 #toast button {
   background: transparent;
-  color: #63a8ff;
+  color: #91c4ff;
   font-weight: 600;
 }
 #storage-error {
@@ -638,6 +640,15 @@ a {
   }
   .sidebar {
     padding: 30px 12px;
+  }
+  .desktop-nav button {
+    gap: 10px;
+    padding: 14px 10px;
+    font-size: 16px;
+  }
+  .desktop-nav button b {
+    min-width: 28px;
+    padding: 0 6px;
   }
   .workspace {
     padding: 110px 24px 40px;
@@ -705,6 +716,14 @@ a {
     right: 19px;
   }
   .date-chip {
+    display: grid;
+    place-items: center;
+    width: 37px;
+    height: 37px;
+    padding: 0;
+    border-radius: 50%;
+  }
+  .date-chip span {
     display: none;
   }
   .theme-toggle {
@@ -1259,4 +1278,8 @@ button.stat:active {
     flex: 1;
     grid-auto-rows: minmax(65px, 1fr);
   }
+}
+
+[data-theme="dark"] #toast button {
+  color: #0059bd;
 }

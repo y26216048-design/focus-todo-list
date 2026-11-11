@@ -9,26 +9,32 @@ jobs:
   browser-checks:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    env:
+      BROWSER: ${{ matrix.browser }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: '24'
+          node-version: "24"
           cache: npm
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - run: npm ci
       - run: npm run format:check
       - run: npm run build
       - run: pip install -r requirements-dev.txt
-      - run: python -m playwright install --with-deps chromium
-      - name: Check built site in Chromium
+      - run: python -m playwright install --with-deps ${{ matrix.browser }}
+      - name: Check built site in ${{ matrix.browser }}
         run: |
           python -m http.server 4173 --bind 127.0.0.1 --directory dist &
           npm test
       - uses: actions/upload-artifact@v5
         if: failure()
         with:
-          name: browser-screenshots
+          name: browser-screenshots-${{ matrix.browser }}
           path: test-results/

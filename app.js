@@ -13,7 +13,7 @@
   const parseDay = (s) => new Date(`${s}T12:00:00`);
   const validDate = (s) =>
     typeof s === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(s) &&
+    /^(?!0000)\d{4}-\d{2}-\d{2}$/.test(s) &&
     !isNaN(parseDay(s)) &&
     day(parseDay(s)) === s;
   const id = () => crypto.randomUUID();
@@ -42,54 +42,137 @@
       time,
       done,
     }));
+  let storageReadable = true;
+  let unsaved = false;
+  const pending = [];
+  function storageError(message) {
+    $("#storage-error").textContent = message;
+    $("#storage-error").hidden = false;
+  }
+  function readTasks() {
+    const stored = localStorage.getItem(KEY);
+    if (stored === null) return null;
+    const data = JSON.parse(stored);
+    const ids = new Set();
+    if (!Array.isArray(data)) throw new Error("Invalid task data");
+    return data.map((t) => {
+      if (
+        !t ||
+        typeof t.id !== "string" ||
+        !t.id ||
+        ids.has(t.id) ||
+        typeof t.text !== "string" ||
+        !t.text.trim() ||
+        typeof t.done !== "boolean" ||
+        !validDate(t.date)
+      )
+        throw new Error("Invalid task data");
+      ids.add(t.id);
+      return {
+        id: t.id,
+        text: t.text,
+        done: t.done,
+        date: t.date,
+        time: /^([01]\d|2[0-3]):[0-5]\d$/.test(t.time) ? t.time : "",
+      };
+    });
+  }
   function load() {
     try {
-      const stored = localStorage.getItem(KEY);
-      if (stored === null) {
+      const data = readTasks();
+      storageReadable = true;
+      if (data !== null) {
+        tasks = data;
+      } else {
         const legacy = JSON.parse(
           localStorage.getItem("focus-todo-tasks-v1") || "null",
         );
-        tasks = Array.isArray(legacy)
-          ? legacy
-              .filter((t) => t && typeof t.text === "string")
-              .map((t) => ({
-                id: id(),
-                text: t.text.slice(0, 300),
-                done: !!t.done,
-                date: today,
-                time: "",
-              }))
-          : examples();
+        if (legacy !== null && !Array.isArray(legacy))
+          throw new Error("Invalid legacy data");
+        tasks =
+          legacy !== null
+            ? legacy
+                .filter((t) => t && typeof t.text === "string" && t.text.trim())
+                .map((t) => ({
+                  id: id(),
+                  text: t.text.slice(0, 300),
+                  done: !!t.done,
+                  date: today,
+                  time: "",
+                }))
+            : examples();
         save();
-      } else {
-        const data = JSON.parse(stored);
-        if (!Array.isArray(data)) throw new Error("Invalid task data");
-        tasks = data
-          .filter(
-            (t) =>
-              t &&
-              typeof t.id === "string" &&
-              typeof t.text === "string" &&
-              typeof t.done === "boolean" &&
-              validDate(t.date),
-          )
-          .map((t) => ({
-            ...t,
-            time: /^([01]\d|2[0-3]):[0-5]\d$/.test(t.time) ? t.time : "",
-          }));
       }
     } catch {
-      $("#storage-error").hidden = false;
+      storageReadable = false;
+      storageError(
+        "Не удалось прочитать задачи. Существующие данные сохранены без изменений. Проверьте доступ к хранилищу и его содержимое; новые изменения пока доступны только в этой вкладке.",
+      );
     }
   }
   function save() {
+    if (!storageReadable) return;
     try {
       localStorage.setItem(KEY, JSON.stringify(tasks));
+      unsaved = false;
       $("#storage-error").hidden = true;
     } catch {
-      $("#storage-error").hidden = false;
+      unsaved = true;
+      storageError(
+        "Не удалось сохранить изменения. Проверьте доступ и свободное место в хранилище браузера. Пока не закрывайте эту вкладку: последние изменения есть только в ней.",
+      );
     }
   }
+  // Paint immediately, then serialize read/modify/write across tabs. Operations
+  // use IDs and absolute values so rebasing never duplicates or toggles twice.
+  function mutate(change) {
+    pending.push(change);
+    change();
+    render();
+    const persist = () => {
+      if (!pending.includes(change)) return;
+      if (!unsaved) {
+        try {
+          const latest = readTasks();
+          if (latest !== null) tasks = latest;
+          storageReadable = true;
+        } catch {
+          storageReadable = false;
+          storageError(
+            "Не удалось прочитать задачи. Данные хранилища не перезаписаны; изменения остаются только в этой вкладке.",
+          );
+        }
+      }
+      change();
+      save();
+      pending.splice(pending.indexOf(change), 1);
+      pending.forEach((operation) => operation());
+      render();
+    };
+    if (navigator.locks) {
+      navigator.locks.request(KEY, persist).catch(() => {
+        storageError(
+          "Не удалось синхронизировать вкладки. Последние изменения доступны только в этой вкладке.",
+        );
+      });
+    } else persist();
+  }
+  // A navigation can destroy the document before an asynchronous lock runs.
+  // Flush remaining local edits during pagehide so an immediate reload is safe.
+  window.addEventListener("pagehide", () => {
+    if (!pending.length) return;
+    if (!unsaved) {
+      try {
+        const latest = readTasks();
+        if (latest !== null) tasks = latest;
+      } catch {
+        storageReadable = false;
+      }
+    }
+    pending.forEach((operation) => operation());
+    save();
+    pending.length = 0;
+  });
   function dateLabel(value) {
     const d = parseDay(value);
     const prefix =
@@ -100,14 +183,9 @@
           : new Intl.DateTimeFormat("ru", { weekday: "long" }).format(d);
     return `${prefix[0].toUpperCase() + prefix.slice(1)}, ${new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) }).format(d)}`;
   }
-  function countLabel(n) {
-    return n % 10 === 1 && n % 100 !== 11
-      ? "задача"
-      : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)
-        ? "задачи"
-        : "задач";
-  }
   function notify(message, undo = false) {
+    // Keep the last deletion reversible for its full five-second lifetime.
+    if (removed && !undo) return;
     ($("#calendar-dialog").open ? $("#calendar-dialog") : document.body).append(
       $("#toast"),
     );
@@ -120,7 +198,7 @@
       removed = null;
     }, 5000);
   }
-  function row(task) {
+  function row(task, calendar = false) {
     const li = document.createElement("li");
     li.className = `task-row${task.done ? " done" : ""}`;
     li.dataset.id = task.id;
@@ -133,9 +211,11 @@
       `${task.done ? "Вернуть в активные" : "Выполнить"}: ${task.text}`,
     );
     checkbox.addEventListener("change", () => {
-      task.done = checkbox.checked;
-      save();
-      render();
+      const checked = checkbox.checked;
+      mutate(() => {
+        const current = tasks.find((t) => t.id === task.id);
+        if (current) current.done = checked;
+      });
     });
     const body = document.createElement("div");
     body.className = "task-body";
@@ -144,10 +224,12 @@
     title.textContent = task.text;
     const meta = document.createElement("div");
     meta.className = "task-meta";
-    meta.innerHTML = icon(view === "completed" ? "calendar" : "clock");
+    meta.innerHTML = icon(
+      view === "completed" && !calendar ? "calendar" : "clock",
+    );
     const metaText = document.createElement("span");
     metaText.textContent =
-      view === "completed"
+      view === "completed" && !calendar
         ? new Intl.DateTimeFormat("ru", {
             day: "numeric",
             month: "long",
@@ -173,9 +255,11 @@
     del.innerHTML = icon("trash-2");
     del.addEventListener("click", () => {
       removed = { task, index: tasks.indexOf(task) };
-      tasks = tasks.filter((t) => t.id !== task.id);
-      save();
-      render();
+      mutate(() => {
+        const current = tasks.find((t) => t.id === task.id);
+        if (current && removed?.task.id === task.id) removed.task = current;
+        tasks = tasks.filter((t) => t.id !== task.id);
+      });
       notify("Задача удалена", true);
     });
     li.append(del);
@@ -183,17 +267,32 @@
   }
   // Update every progress indicator immediately after any task change.
   // No animation timer: the number must reflect the saved checkbox state.
-  let progressTarget = 0;
-  function animateProgress(target) {
-    progressTarget = Math.max(0, Math.min(100, target));
+  function updateProgress(target) {
+    const percentage = Math.max(0, Math.min(100, target));
     document.querySelectorAll("[data-progress]").forEach((el) => {
-      el.textContent = `${progressTarget}%`;
+      el.textContent = `${percentage}%`;
     });
     document.querySelectorAll(".ring").forEach((el) => {
-      el.style.setProperty("--value", `${progressTarget}%`);
+      el.style.setProperty("--value", `${percentage}%`);
     });
   }
   function render() {
+    const active = document.activeElement;
+    const activeRow = active?.closest(".task-row");
+    const region = activeRow?.closest("#calendar-tasks") || $("#task-groups");
+    const rowIndex = activeRow
+      ? [...region.querySelectorAll(".task-row")].indexOf(activeRow)
+      : -1;
+    const control = active?.matches(".task-check")
+      ? ".task-check"
+      : ".delete-button";
+    if (today !== day()) {
+      const nextDate = parseDay(today);
+      nextDate.setDate(nextDate.getDate() + 1);
+      const previousDefault = view === "upcoming" ? day(nextDate) : today;
+      if ($("#task-date").value === previousDefault)
+        $("#task-date").value = view === "upcoming" ? shiftedDay(1) : day();
+    }
     today = day();
     const done = tasks.filter((t) => t.done).length;
     const percentage = tasks.length
@@ -201,9 +300,9 @@
       : 0;
     const upcoming = tasks.filter((t) => !t.done && t.date > today),
       completed = tasks.filter((t) => t.done);
-    animateProgress(percentage);
+    updateProgress(percentage);
     $("[data-progress-label]").textContent =
-      `${done} из ${tasks.length} ${countLabel(tasks.length)}`;
+      `${done} из ${tasks.length} ${tasks.length % 10 === 1 && tasks.length % 100 !== 11 ? "задачи" : "задач"}`;
     $("#stat-done").textContent = done;
     $("#stat-left").textContent = tasks.length - done;
     const counts = {
@@ -246,7 +345,7 @@
     $("#task-form").hidden = view === "completed";
     $("#completed-banner").hidden = view !== "completed" || !completed.length;
     $("#completed-summary").textContent =
-      `${completed.length} ${countLabel(completed.length)} выполнено`;
+      `Выполнено задач: ${completed.length}`;
     const groups = $("#task-groups");
     groups.replaceChildren();
     let selected =
@@ -308,6 +407,16 @@
     $("#empty-title").textContent = empty[view][0];
     $("#empty-description").textContent = empty[view][1];
     if ($("#calendar-dialog").open) renderCalendar();
+    if (activeRow) {
+      const rows = [...region.querySelectorAll(".task-row")];
+      const target =
+        rows.find((item) => item.dataset.id === activeRow.dataset.id) ||
+        rows[Math.min(rowIndex, rows.length - 1)];
+      (
+        target?.querySelector(control) ||
+        ($("#calendar-dialog").open ? $("#calendar-add") : $("#page-title"))
+      ).focus({ preventScroll: true });
+    }
   }
   function setView(next) {
     if (!["today", "upcoming", "completed"].includes(next)) return;
@@ -317,7 +426,6 @@
     $("#task-date").value = view === "upcoming" ? shiftedDay(1) : day();
     render();
     if (changed) {
-      if (next === "today") animateProgress(progressTarget, true);
       if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
         $("#main")
           .getAnimations()
@@ -335,6 +443,7 @@
   }
   $("#task-form").addEventListener("submit", (event) => {
     event.preventDefault();
+    refreshDay();
     const text = $("#task-input").value.trim(),
       date = $("#task-date").value;
     if (!text) {
@@ -343,14 +452,16 @@
       return;
     }
     if (!validDate(date)) return;
-    tasks.push({
+    const task = {
       id: id(),
       text,
       date,
       time: $("#task-time").value,
       done: false,
+    };
+    mutate(() => {
+      if (!tasks.some((t) => t.id === task.id)) tasks.push(task);
     });
-    save();
     $("#task-input").value = "";
     $("#task-time").value = "";
     setView(date > today ? "upcoming" : "today");
@@ -375,7 +486,11 @@
     document.documentElement.dataset.theme = theme;
     try {
       localStorage.setItem("velio-theme", theme);
-    } catch {}
+    } catch {
+      storageError(
+        "Не удалось сохранить тему. Выбор действует до перезагрузки страницы.",
+      );
+    }
     renderTheme();
   });
   function renderTheme() {
@@ -401,7 +516,7 @@
     if (selected.length) {
       const list = document.createElement("ul");
       list.className = "task-list";
-      selected.forEach((task) => list.append(row(task)));
+      selected.forEach((task) => list.append(row(task, true)));
       container.append(list);
     }
     $("#calendar-add").disabled = !validDate(date);
@@ -410,6 +525,7 @@
     $("#calendar-date").value = day();
     renderCalendar();
     $("#calendar-dialog").showModal();
+    if (!$("#toast").hidden) $("#calendar-dialog").append($("#toast"));
   });
   $("#calendar-dialog").addEventListener("close", () =>
     document.body.append($("#toast")),
@@ -432,21 +548,48 @@
   });
   $("#toast button").addEventListener("click", () => {
     if (removed) {
-      tasks.splice(removed.index, 0, removed.task);
+      const restore = removed;
       removed = null;
-      save();
-      render();
+      mutate(() => {
+        if (!tasks.some((t) => t.id === restore.task.id))
+          tasks.splice(restore.index, 0, restore.task);
+      });
     }
     $("#toast").hidden = true;
   });
   window.addEventListener("storage", (event) => {
-    if (event.key === KEY) {
-      load();
-      render();
+    if (event.key === KEY || event.key === null) {
+      if (!pending.length && !unsaved) {
+        // A removal/clear event represents an empty list, not a first launch.
+        if (event.newValue === null) tasks = [];
+        else load();
+        render();
+      }
+    }
+    if (event.key === "velio-theme" || event.key === null) {
+      document.documentElement.dataset.theme = ["light", "dark"].includes(
+        event.newValue,
+      )
+        ? event.newValue
+        : matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+      renderTheme();
     }
   });
-  window.addEventListener("focus", () => {
+  function refreshDay() {
     if (day() !== today) render();
+  }
+  window.addEventListener("focus", refreshDay);
+  document.addEventListener("visibilitychange", refreshDay);
+  setInterval(refreshDay, 30000);
+  let compact = innerWidth <= 760;
+  window.addEventListener("resize", () => {
+    const nextCompact = innerWidth <= 760;
+    if (compact !== nextCompact) {
+      compact = nextCompact;
+      render();
+    }
   });
   load();
   feather.replace({ "aria-hidden": "true" });

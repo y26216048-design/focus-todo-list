@@ -14,17 +14,18 @@
     <title>VELIO — ваши задачи</title>
     <script>
       try {
+        const savedTheme = localStorage.getItem("velio-theme");
         document.documentElement.dataset.theme =
-          localStorage.getItem("velio-theme") ||
+          (["light", "dark"].includes(savedTheme) ? savedTheme : null) ||
           (matchMedia("(prefers-color-scheme: dark)").matches
             ? "dark"
             : "light");
       } catch {}
     </script>
-    <link rel="stylesheet" href="./styles.css?v=5e86ab7401f1" />
+    <link rel="stylesheet" href="./styles.css?v=29de488d4a23" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <script src="./vendor/feather.min.js?v=ea465ac6b69a" defer></script>
-    <script src="./app.js?v=a11f0c2d2026" defer></script>
+    <script src="./app.js?v=a63225da2293" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -112,6 +113,8 @@
                 ><i data-feather="calendar"></i
                 ><input
                   type="date"
+                  min="0001-01-01"
+                  max="9999-12-31"
                   id="task-date"
                   aria-label="Дата задачи"
                   required /></label
@@ -197,12 +200,13 @@
       <div class="calendar-controls">
         <label for="calendar-date">Задачи на дату</label>
         <div>
-          <input type="date" id="calendar-date" required /><button
-            type="button"
-            id="calendar-today"
-          >
-            Сегодня
-          </button>
+          <input
+            type="date"
+            min="0001-01-01"
+            max="9999-12-31"
+            id="calendar-date"
+            required
+          /><button type="button" id="calendar-today">Сегодня</button>
         </div>
       </div>
       <div id="calendar-tasks"></div>
