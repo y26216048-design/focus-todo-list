@@ -197,16 +197,24 @@ class Audit(unittest.TestCase):
         other.close()
 
     def test_immediate_reload_before_async_save(self):
-        self.open([])
-        self.page.evaluate(
-            "() => { navigator.locks.request('velio-tasks-v1', () => new Promise(() => {})); }"
-        )
-        self.add("reload-with-pending-lock")
-        self.page.reload()
-        expect(self.page.locator(".task-title")).to_have_text(
-            "reload-with-pending-lock"
-        )
-        self.saved(1)
+        for iteration in range(5):
+            self.open([])
+            self.page.evaluate("""() => {
+                navigator.locks.request('velio-tasks-v1', () => {
+                    window.auditLockHeld = true;
+                    return new Promise(() => {});
+                });
+            }""")
+            self.page.wait_for_function("window.auditLockHeld === true")
+            title = f"reload-with-pending-lock-{iteration}"
+            self.add(title)
+            self.assertEqual(self.saved(0), [])
+            self.page.reload()
+            expect(self.page.locator(".task-title")).to_have_text(title)
+            self.saved(1)
+            self.page.wait_for_function(
+                "!Object.keys(localStorage).some(key => key.startsWith('velio-pending-v1:'))"
+            )
 
     def test_theme_sync_and_clear_storage_event(self):
         self.open([task("initial")])
@@ -239,6 +247,21 @@ class Audit(unittest.TestCase):
                 self.page.evaluate('localStorage.getItem("velio-tasks-v1")'), raw
             )
             expect(self.page.locator("#storage-error")).to_be_visible()
+
+        self.page.evaluate("""() => {
+            localStorage.setItem('velio-tasks-v1', '[]');
+            localStorage.setItem('velio-pending-v1:broken', '{broken');
+        }""")
+        self.page.reload()
+        expect(self.page.locator("#storage-error")).to_be_visible()
+        self.add("do-not-overwrite-broken-journal")
+        self.assertEqual(
+            self.page.evaluate("localStorage.getItem('velio-tasks-v1')"), "[]"
+        )
+        self.assertEqual(
+            self.page.evaluate("localStorage.getItem('velio-pending-v1:broken')"),
+            "{broken",
+        )
 
     def test_storage_quota_and_denied_access(self):
         self.open([])
@@ -342,11 +365,11 @@ class Audit(unittest.TestCase):
             )
             self.page.locator("#task-form .add-button").click()
             expect(self.page.locator(".task-row")).to_have_count(0)
-        self.page.locator("#task-date").fill("2026-11-11")
+        self.page.locator("#task-date").fill("0001-01-01")
         self.page.locator("#task-time").evaluate("el => el.value = '25:99'")
         expect(self.page.locator("#task-time")).to_have_value("")
         self.page.locator("#task-form .add-button").click()
-        self.saved(1)
+        self.assertEqual(self.saved(1)[0]["date"], "0001-01-01")
         self.add("second")
         self.saved(2)
         self.page.locator(".delete-button").first.click()

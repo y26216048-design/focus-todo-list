@@ -2,9 +2,12 @@
 (() => {
   "use strict";
   const KEY = "velio-tasks-v1";
+  const PENDING = "velio-pending-v1:";
+  const tabId = crypto.randomUUID();
+  let sequence = 0;
   const $ = (s) => document.querySelector(s);
   const day = (date = new Date()) =>
-    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    `${String(date.getFullYear()).padStart(4, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   const shiftedDay = (n) => {
     const d = new Date();
     d.setDate(d.getDate() + n);
@@ -103,6 +106,9 @@
             : examples();
         save();
       }
+      const journal = readPending();
+      journal.forEach(apply);
+      if (journal.length) syncTasks();
     } catch {
       storageReadable = false;
       storageError(
@@ -116,6 +122,7 @@
       localStorage.setItem(KEY, JSON.stringify(tasks));
       unsaved = false;
       $("#storage-error").hidden = true;
+      return true;
     } catch {
       unsaved = true;
       storageError(
@@ -123,56 +130,135 @@
       );
     }
   }
-  // Paint immediately, then serialize read/modify/write across tabs. Operations
-  // use IDs and absolute values so rebasing never duplicates or toggles twice.
-  function mutate(change) {
-    pending.push(change);
-    change();
-    render();
-    const persist = () => {
-      if (!pending.includes(change)) return;
-      if (!unsaved) {
-        try {
-          const latest = readTasks();
-          if (latest !== null) tasks = latest;
-          storageReadable = true;
-        } catch {
-          storageReadable = false;
-          storageError(
-            "Не удалось прочитать задачи. Данные хранилища не перезаписаны; изменения остаются только в этой вкладке.",
-          );
-        }
-      }
-      change();
-      save();
-      pending.splice(pending.indexOf(change), 1);
-      pending.forEach((operation) => operation());
-      render();
-    };
-    if (navigator.locks) {
-      navigator.locks.request(KEY, persist).catch(() => {
-        storageError(
-          "Не удалось синхронизировать вкладки. Последние изменения доступны только в этой вкладке.",
-        );
-      });
-    } else persist();
+  function apply(operation) {
+    if (operation.type === "add" || operation.type === "restore") {
+      if (!tasks.some((task) => task.id === operation.task.id))
+        tasks.splice(operation.index ?? tasks.length, 0, operation.task);
+    } else if (operation.type === "done") {
+      const task = tasks.find((task) => task.id === operation.taskId);
+      if (task) task.done = operation.done;
+    } else if (operation.type === "delete") {
+      const current = tasks.find((task) => task.id === operation.taskId);
+      if (current && removed?.task.id === operation.taskId)
+        removed.task = current;
+      tasks = tasks.filter((task) => task.id !== operation.taskId);
+    }
   }
-  // A navigation can destroy the document before an asynchronous lock runs.
-  // Flush remaining local edits during pagehide so an immediate reload is safe.
-  window.addEventListener("pagehide", () => {
-    if (!pending.length) return;
-    if (!unsaved) {
+  function readPending() {
+    const operations = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(PENDING)) continue;
+      const operation = JSON.parse(localStorage.getItem(key));
+      if (
+        !operation ||
+        typeof operation.id !== "string" ||
+        !operation.id ||
+        PENDING + operation.id !== key ||
+        !["add", "restore", "done", "delete"].includes(operation.type) ||
+        !Number.isFinite(operation.order) ||
+        typeof operation.tab !== "string" ||
+        !Number.isInteger(operation.sequence)
+      )
+        throw new Error("Invalid pending operation");
+      if (operation.type === "add" || operation.type === "restore") {
+        const task = operation.task;
+        if (
+          !task ||
+          typeof task.id !== "string" ||
+          !task.id ||
+          typeof task.text !== "string" ||
+          !task.text.trim() ||
+          typeof task.done !== "boolean" ||
+          !validDate(task.date) ||
+          typeof task.time !== "string" ||
+          (task.time !== "" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(task.time)) ||
+          (operation.type === "restore" &&
+            (!Number.isInteger(operation.index) || operation.index < 0))
+        )
+          throw new Error("Invalid pending task");
+      } else if (
+        typeof operation.taskId !== "string" ||
+        !operation.taskId ||
+        (operation.type === "done" && typeof operation.done !== "boolean")
+      )
+        throw new Error("Invalid pending operation");
+      operations.push(operation);
+    }
+    return operations.sort(
+      (a, b) =>
+        a.order - b.order ||
+        a.tab.localeCompare(b.tab) ||
+        a.sequence - b.sequence,
+    );
+  }
+  // A small write-ahead journal survives navigation before an asynchronous
+  // Web Lock can run. Each operation has its own key, so tabs cannot overwrite
+  // one another's pending edits. The v1 task snapshot remains compatible.
+  function mutate(operation) {
+    operation = {
+      ...operation,
+      id: id(),
+      order: Date.now(),
+      tab: tabId,
+      sequence: sequence++,
+    };
+    pending.push(operation);
+    if (storageReadable) {
       try {
-        const latest = readTasks();
-        if (latest !== null) tasks = latest;
+        localStorage.setItem(PENDING + operation.id, JSON.stringify(operation));
+        operation.journaled = true;
       } catch {
-        storageReadable = false;
+        unsaved = true;
+        storageError(
+          "Не удалось сохранить изменения. Пока не закрывайте эту вкладку: последние изменения доступны только в ней.",
+        );
       }
     }
-    pending.forEach((operation) => operation());
-    save();
-    pending.length = 0;
-  });
+    apply(operation);
+    render();
+    syncTasks();
+  }
+  function commitPending() {
+    if (!storageReadable) return;
+    try {
+      const journal = readPending();
+      const latest = readTasks();
+      if (latest !== null) tasks = latest;
+      const operations = [
+        ...journal,
+        ...pending.filter((operation) => !operation.journaled),
+      ];
+      operations.sort(
+        (a, b) =>
+          a.order - b.order ||
+          a.tab.localeCompare(b.tab) ||
+          a.sequence - b.sequence,
+      );
+      operations.forEach(apply);
+      if (save()) {
+        journal.forEach((operation) =>
+          localStorage.removeItem(PENDING + operation.id),
+        );
+        pending.length = 0;
+      }
+      render();
+    } catch {
+      storageReadable = false;
+      storageError(
+        "Не удалось прочитать задачи или очередь изменений. Исходные записи не перезаписаны; новые изменения остаются только в этой вкладке.",
+      );
+    }
+  }
+  function syncTasks() {
+    if (navigator.locks) {
+      navigator.locks.request(KEY, commitPending).catch(() => {
+        storageError(
+          "Не удалось синхронизировать вкладки. Последние изменения сохранены в локальной очереди.",
+        );
+      });
+    } else commitPending();
+  }
   function dateLabel(value) {
     const d = parseDay(value);
     const prefix =
@@ -212,10 +298,7 @@
     );
     checkbox.addEventListener("change", () => {
       const checked = checkbox.checked;
-      mutate(() => {
-        const current = tasks.find((t) => t.id === task.id);
-        if (current) current.done = checked;
-      });
+      mutate({ type: "done", taskId: task.id, done: checked });
     });
     const body = document.createElement("div");
     body.className = "task-body";
@@ -255,11 +338,7 @@
     del.innerHTML = icon("trash-2");
     del.addEventListener("click", () => {
       removed = { task, index: tasks.indexOf(task) };
-      mutate(() => {
-        const current = tasks.find((t) => t.id === task.id);
-        if (current && removed?.task.id === task.id) removed.task = current;
-        tasks = tasks.filter((t) => t.id !== task.id);
-      });
+      mutate({ type: "delete", taskId: task.id });
       notify("Задача удалена", true);
     });
     li.append(del);
@@ -459,9 +538,7 @@
       time: $("#task-time").value,
       done: false,
     };
-    mutate(() => {
-      if (!tasks.some((t) => t.id === task.id)) tasks.push(task);
-    });
+    mutate({ type: "add", task });
     $("#task-input").value = "";
     $("#task-time").value = "";
     setView(date > today ? "upcoming" : "today");
@@ -550,9 +627,10 @@
     if (removed) {
       const restore = removed;
       removed = null;
-      mutate(() => {
-        if (!tasks.some((t) => t.id === restore.task.id))
-          tasks.splice(restore.index, 0, restore.task);
+      mutate({
+        type: "restore",
+        task: restore.task,
+        index: Math.max(0, restore.index),
       });
     }
     $("#toast").hidden = true;
