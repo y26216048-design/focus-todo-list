@@ -181,44 +181,17 @@
     li.append(del);
     return li;
   }
-  // One shared animation keeps both rings and the summary percentage in sync.
-  let progressFrame = 0;
-  let progressValue = 0;
-  let progressTarget = null;
-  function paintProgress(value) {
-    progressValue = value;
+  // Update every progress indicator immediately after any task change.
+  // No animation timer: the number must reflect the saved checkbox state.
+  let progressTarget = 0;
+  function animateProgress(target) {
+    progressTarget = Math.max(0, Math.min(100, target));
     document.querySelectorAll("[data-progress]").forEach((el) => {
-      el.textContent = `${Math.round(value)}%`;
+      el.textContent = `${progressTarget}%`;
     });
     document.querySelectorAll(".ring").forEach((el) => {
-      el.style.setProperty("--value", `${value}%`);
+      el.style.setProperty("--value", `${progressTarget}%`);
     });
-  }
-  function animateProgress(target, replay = false) {
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (target === progressTarget && !replay && !reduced) return;
-    cancelAnimationFrame(progressFrame);
-    const initial = progressTarget === null;
-    progressTarget = target;
-    if (reduced) {
-      paintProgress(target);
-      return;
-    }
-    const from = replay || initial ? 0 : progressValue;
-    const start = performance.now();
-    const duration = initial || replay ? 900 : 450;
-    paintProgress(from);
-    function frame(now) {
-      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        paintProgress(target);
-        return;
-      }
-      const elapsed = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - elapsed, 3);
-      paintProgress(from + (target - from) * eased);
-      if (elapsed < 1) progressFrame = requestAnimationFrame(frame);
-    }
-    progressFrame = requestAnimationFrame(frame);
   }
   function render() {
     today = day();
