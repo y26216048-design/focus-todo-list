@@ -222,18 +222,17 @@
   }
   function render() {
     today = day();
-    const daily = tasks.filter((t) => t.date === today),
-      done = daily.filter((t) => t.done).length;
-    const percentage = daily.length
-      ? Math.round((done / daily.length) * 100)
+    const done = tasks.filter((t) => t.done).length;
+    const percentage = tasks.length
+      ? Math.round((done / tasks.length) * 100)
       : 0;
     const upcoming = tasks.filter((t) => !t.done && t.date > today),
       completed = tasks.filter((t) => t.done);
     animateProgress(percentage);
     $("[data-progress-label]").textContent =
-      `${done} из ${daily.length} ${countLabel(daily.length)}`;
+      `${done} из ${tasks.length} ${countLabel(tasks.length)}`;
     $("#stat-done").textContent = done;
-    $("#stat-left").textContent = daily.length - done;
+    $("#stat-left").textContent = tasks.length - done;
     const counts = {
       today: tasks.filter(
         (t) => t.date === today || (!t.done && t.date < today),
