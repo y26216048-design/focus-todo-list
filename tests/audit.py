@@ -40,7 +40,10 @@ class Audit(unittest.TestCase):
             "console",
             lambda msg: self.errors.append(msg.text) if msg.type == "error" else None,
         )
-        self.page.on("requestfailed", lambda request: self.network.append(request.url))
+        self.page.on(
+            "requestfailed",
+            lambda request: self.network.append(f"{request.failure}: {request.url}"),
+        )
         self.page.on(
             "response",
             lambda response: (
@@ -56,12 +59,14 @@ class Audit(unittest.TestCase):
         self.assertEqual(self.network, [])
 
     def open(self, tasks):
-        self.page.goto(URL)
+        # Finish static resource loading before preparing another navigation.
+        # Otherwise Firefox correctly cancels an in-flight favicon on reload.
+        self.page.goto(URL, wait_until="networkidle")
         self.page.evaluate(
             '(data) => localStorage.setItem("velio-tasks-v1", JSON.stringify(data))',
             tasks,
         )
-        self.page.reload()
+        self.page.reload(wait_until="networkidle")
 
     def saved(self, count):
         self.page.wait_for_function(
@@ -95,7 +100,7 @@ class Audit(unittest.TestCase):
         self.page.wait_for_function(
             'JSON.parse(localStorage.getItem("velio-tasks-v1")).filter(t=>t.done).length === 2'
         )
-        self.page.reload()
+        self.page.reload(wait_until="networkidle")
         expect(self.page.locator("#stat-done")).to_have_text("2")
         expect(self.page.locator("#stat-left")).to_have_text("1")
         self.page.locator('[data-id="b"] .delete-button').click()
@@ -149,7 +154,7 @@ class Audit(unittest.TestCase):
                 ),
                 width,
             )
-        self.page.reload()
+        self.page.reload(wait_until="networkidle")
         expect(self.page.locator(".task-row")).to_have_count(2)
 
     def test_two_tabs_rebase_and_serialize_changes(self):
@@ -159,7 +164,7 @@ class Audit(unittest.TestCase):
         other.add_init_script(
             "window.addEventListener('storage', e => e.stopImmediatePropagation())"
         )
-        other.goto(URL)
+        other.goto(URL, wait_until="networkidle")
         self.add("from-first")
         self.saved(2)
         other.locator("#task-input").fill("from-second")
@@ -189,7 +194,7 @@ class Audit(unittest.TestCase):
         self.page.locator("[data-id=initial] .task-check").check()
         other.locator("[data-id=initial] .delete-button").click()
         self.saved(4)
-        self.page.reload()
+        self.page.reload(wait_until="networkidle")
         expect(self.page.locator("[data-id=initial]")).to_have_count(0)
         other.locator("#toast button").click()
         self.saved(5)
@@ -209,7 +214,7 @@ class Audit(unittest.TestCase):
             title = f"reload-with-pending-lock-{iteration}"
             self.add(title)
             self.assertEqual(self.saved(0), [])
-            self.page.reload()
+            self.page.reload(wait_until="networkidle")
             expect(self.page.locator(".task-title")).to_have_text(title)
             self.saved(1)
             self.page.wait_for_function(
@@ -219,18 +224,18 @@ class Audit(unittest.TestCase):
     def test_theme_sync_and_clear_storage_event(self):
         self.open([task("initial")])
         other = self.context.new_page()
-        other.goto(URL)
+        other.goto(URL, wait_until="networkidle")
         self.page.locator(".theme-toggle").click()
         theme = self.page.locator("html").get_attribute("data-theme")
         expect(other.locator("html")).to_have_attribute("data-theme", theme)
-        other.reload()
+        other.reload(wait_until="networkidle")
         expect(other.locator("html")).to_have_attribute("data-theme", theme)
         other.evaluate("localStorage.clear()")
         expect(self.page.locator(".task-row")).to_have_count(0)
         other.close()
 
     def test_corrupt_data_is_not_overwritten(self):
-        self.page.goto(URL)
+        self.page.goto(URL, wait_until="networkidle")
         for raw in (
             "{broken",
             "{}",
@@ -239,7 +244,7 @@ class Audit(unittest.TestCase):
             self.page.evaluate(
                 '(raw) => localStorage.setItem("velio-tasks-v1", raw)', raw
             )
-            self.page.reload()
+            self.page.reload(wait_until="networkidle")
             expect(self.page.locator("#storage-error")).to_be_visible()
             self.add("memory-only")
             self.page.wait_for_timeout(100)
@@ -252,7 +257,7 @@ class Audit(unittest.TestCase):
             localStorage.setItem('velio-tasks-v1', '[]');
             localStorage.setItem('velio-pending-v1:broken', '{broken');
         }""")
-        self.page.reload()
+        self.page.reload(wait_until="networkidle")
         expect(self.page.locator("#storage-error")).to_be_visible()
         self.add("do-not-overwrite-broken-journal")
         self.assertEqual(
@@ -281,27 +286,27 @@ class Audit(unittest.TestCase):
         self.add("saved-three")
         self.saved(3)
         expect(self.page.locator("#storage-error")).to_be_hidden()
-        self.page.reload()
+        self.page.reload(wait_until="networkidle")
         expect(self.page.locator(".task-row")).to_have_count(3)
         self.page.add_init_script(
             "Storage.prototype.getItem = function() { throw new DOMException('Denied', 'SecurityError'); }"
         )
-        self.page.reload()
+        self.page.reload(wait_until="networkidle")
         expect(self.page.locator("#storage-error")).to_be_visible()
         self.add("works-in-memory")
         expect(self.page.locator(".task-row")).to_have_count(1)
 
     def test_legacy_migration_and_empty_persistence(self):
-        self.page.goto(URL)
+        self.page.goto(URL, wait_until="networkidle")
         self.page.evaluate("""() => {
             localStorage.removeItem('velio-tasks-v1');
             localStorage.setItem('focus-todo-tasks-v1', JSON.stringify([{text:'Legacy <b>',done:true}]));
         }""")
-        self.page.reload()
+        self.page.reload(wait_until="networkidle")
         self.assertEqual(self.saved(1)[0]["text"], "Legacy <b>")
         self.page.locator(".delete-button").click()
         self.saved(0)
-        self.page.reload()
+        self.page.reload(wait_until="networkidle")
         expect(self.page.locator(".task-row")).to_have_count(0)
         self.assertIsNotNone(
             self.page.evaluate('localStorage.getItem("focus-todo-tasks-v1")')
@@ -339,7 +344,7 @@ class Audit(unittest.TestCase):
             try:
                 page = context.new_page()
                 page.clock.install(time="2026-11-12T00:30:00Z")
-                page.goto(URL)
+                page.goto(URL, wait_until="networkidle")
                 expect(page.locator("#task-date")).to_have_value(today)
                 page.locator("#calendar-open").click()
                 page.locator("#calendar-date").fill("2026-11-12")
@@ -380,7 +385,7 @@ class Audit(unittest.TestCase):
         expect(self.page.locator(".task-title")).to_have_text("second")
         self.page.clock.fast_forward(5100)
         expect(self.page.locator(".task-title")).to_have_text("second")
-        self.page.reload()
+        self.page.reload(wait_until="networkidle")
         expect(self.page.locator(".task-title")).to_have_text("second")
 
     def test_keyboard_focus_and_undo_expiry(self):
@@ -403,7 +408,7 @@ class Audit(unittest.TestCase):
         self.page.locator("#calendar-close").click()
         self.page.clock.fast_forward(5100)
         expect(self.page.locator("#toast")).to_be_hidden()
-        self.page.reload()
+        self.page.reload(wait_until="networkidle")
         expect(self.page.locator("[data-id=a]")).to_have_count(0)
 
 

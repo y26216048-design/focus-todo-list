@@ -25,7 +25,10 @@ def watch_errors(page):
         "console", lambda msg: errors.append(msg.text) if msg.type == "error" else None
     )
     page.on(
-        "requestfailed", lambda request: errors.append(f"Request failed: {request.url}")
+        "requestfailed",
+        lambda request: errors.append(
+            f"Request failed ({request.failure}): {request.url}"
+        ),
     )
     page.on(
         "response",
